@@ -1,0 +1,126 @@
+{
+    "topics": [
+        {
+            "id": 0,
+            "top_words": [
+                "comfy",
+                "comfy stylish",
+                "lately",
+                "stylish",
+                "lately comfy",
+                "aesthetic lately",
+                "aesthetic",
+                "love"
+            ],
+            "label": "Topic 1: comfy, comfy stylish, lately"
+        },
+        {
+            "id": 1,
+            "top_words": [
+                "today",
+                "outfit",
+                "ootd",
+                "today outfit",
+                "outfit ootd",
+                "vibe today",
+                "classic",
+                "vibe"
+            ],
+            "label": "Topic 2: today, outfit, ootd"
+        },
+        {
+            "id": 2,
+            "top_words": [
+                "trend",
+                "guy",
+                "guy think",
+                "trend guy",
+                "think",
+                "denim trend",
+                "vintage trend",
+                "luxury trend"
+            ],
+            "label": "Topic 3: trend, guy, guy think"
+        },
+        {
+            "id": 3,
+            "top_words": [
+                "look",
+                "look fashion",
+                "obsess",
+                "fan",
+                "weird",
+                "look weird",
+                "vintage",
+                "vintage look"
+            ],
+            "label": "Topic 4: look, look fashion, obsess"
+        },
+        {
+            "id": 4,
+            "top_words": [
+                "not",
+                "wardrobe",
+                "not hype",
+                "hype",
+                "take wardrobe",
+                "take",
+                "taking wardrobe",
+                "taking"
+            ],
+            "label": "Topic 5: not, wardrobe, not hype"
+        },
+        {
+            "id": 5,
+            "top_words": [
+                "pant",
+                "cargo",
+                "cargo pant",
+                "perfectly",
+                "fit perfectly",
+                "fit",
+                "stunning",
+                "pant look"
+            ],
+            "label": "Topic 6: pant, cargo, cargo pant"
+        },
+        {
+            "id": 6,
+            "top_words": [
+                "fashion",
+                "sustainable fashion",
+                "sustainable",
+                "fashion look",
+                "obsess sustainable",
+                "fashion sustainablefashion",
+                "sustainablefashion",
+                "look fashion"
+            ],
+            "label": "Topic 7: fashion, sustainable fashion, sustainable"
+        },
+        {
+            "id": 7,
+            "top_words": [
+                "fad",
+                "okay",
+                "pass fad",
+                "pass",
+                "okay streetwear",
+                "streetwear pass",
+                "vintage pass",
+                "okay vintage"
+            ],
+            "label": "Topic 8: fad, okay, pass fad"
+        }
+    ],
+    "topic_distribution": {
+        "Topic 3: trend, guy, guy think": 359,
+        "Topic 1: comfy, comfy stylish, lately": 320,
+        "Topic 4: look, look fashion, obsess": 553,
+        "Topic 5: not, wardrobe, not hype": 380,
+        "Topic 7: fashion, sustainable fashion, sustainable": 181,
+        "Topic 2: today, outfit, ootd": 266,
+        "Topic 6: pant, cargo, cargo pant": 233,
+        "Topic 8: fad, okay, pass fad": 208
+    }
+}

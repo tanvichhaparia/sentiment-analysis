@@ -25,6 +25,13 @@ def main():
     print("Extracting fashion trends...")
     df['detected_trends'] = extract_trends_from_phrases(df['noun_phrases'])
     
+    # 3. Unsupervised Topic Discovery (NMF)
+    print("Running Unsupervised Topic Discovery (NMF)...")
+    from src.topic_discovery import run_topic_discovery, save_topics
+    topic_res = run_topic_discovery(df, text_column='clean_text', n_topics=8, method='nmf')
+    df['discovered_topic'] = topic_res['dominant_topics']
+    save_topics(topic_res, output_path='reports/discovered_topics.json')
+
     # Predict sentiments using our trained model if it exists
     if os.path.exists(model_path):
         print("Predicting sentiment with trained model...")
@@ -46,6 +53,7 @@ def main():
     
     df.to_csv(output_path, index=False)
     print(f"Processed data saved to {output_path}")
+
 
 if __name__ == "__main__":
     main()

@@ -84,26 +84,67 @@ def main():
         
     # 2. Trend Analysis
     with tabs[1]:
-        st.header("Fashion Trend Analysis")
-        if all_trends:
-            trend_counts = Counter(all_trends).most_common(20)
-            trend_df = pd.DataFrame(trend_counts, columns=['Trend', 'Mentions'])
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                fig = px.bar(trend_df, x='Mentions', y='Trend', orientation='h', title="Top Fashion Trends")
-                fig.update_layout(yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig, use_container_width=True)
+        st.header("Fashion Trend Analysis & Unsupervised Topic Discovery")
+        
+        analysis_mode = st.radio(
+            "Trend Extraction Perspective:",
+            ["Rule/Seed-based Trends", "Unsupervised Discovered Topics (NMF / Topic Modeling)"],
+            horizontal=True
+        )
+        
+        if analysis_mode == "Rule/Seed-based Trends":
+            if all_trends:
+                trend_counts = Counter(all_trends).most_common(20)
+                trend_df = pd.DataFrame(trend_counts, columns=['Trend', 'Mentions'])
                 
-            with col2:
-                st.subheader("Trend Word Cloud")
-                wordcloud = WordCloud(width=800, height=600, background_color='white').generate(" ".join(all_trends))
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.imshow(wordcloud, interpolation='bilinear')
-                ax.axis('off')
-                st.pyplot(fig)
+                col1, col2 = st.columns(2)
+                with col1:
+                    fig = px.bar(trend_df, x='Mentions', y='Trend', orientation='h', title="Top Fashion Trends (Seed Keywords + Phrases)")
+                    fig.update_layout(yaxis={'categoryorder':'total ascending'})
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                with col2:
+                    st.subheader("Trend Word Cloud")
+                    wordcloud = WordCloud(width=800, height=600, background_color='white').generate(" ".join(all_trends))
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    ax.imshow(wordcloud, interpolation='bilinear')
+                    ax.axis('off')
+                    st.pyplot(fig)
+            else:
+                st.info("No trends detected.")
         else:
-            st.info("No trends detected.")
+            st.subheader("💡 Unsupervised Topic Discovery (Non-Negative Matrix Factorization)")
+            st.markdown(
+                "Unlike dictionary matching, **NMF decomposes the TF-IDF document-term matrix** into latent thematic topics. "
+                "This allows discovering emerging slang, micro-trends, and aesthetics automatically."
+            )
+            
+            topics_file = "reports/discovered_topics.json"
+            if os.path.exists(topics_file):
+                with open(topics_file, 'r') as f:
+                    topics_info = json.load(f)
+                
+                col_t1, col_t2 = st.columns([1, 1])
+                with col_t1:
+                    st.markdown("#### Discovered Thematic Topics")
+                    for t in topics_info.get('topics', []):
+                        keywords_pill = " • ".join(t['top_words'])
+                        st.markdown(f"**Topic {t['id'] + 1}**: `{keywords_pill}`")
+                
+                with col_t2:
+                    dist = topics_info.get('topic_distribution', {})
+                    if dist:
+                        dist_df = pd.DataFrame(list(dist.items()), columns=['Topic', 'Post Count'])
+                        fig_topics = px.bar(
+                            dist_df, x='Post Count', y='Topic', orientation='h',
+                            title="Post Distribution by Discovered Topic",
+                            color='Post Count', color_continuous_scale='Blues'
+                        )
+                        fig_topics.update_layout(yaxis={'categoryorder': 'total ascending'})
+                        st.plotly_chart(fig_topics, use_container_width=True)
+            else:
+                st.info("Topic discovery report not found. Run scripts/process_data.py to extract topics.")
+
             
     # 3. Trend Shifts
     with tabs[2]:
