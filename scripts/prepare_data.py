@@ -23,8 +23,8 @@ def generate_synthetic_data(num_records=2000):
     
     # Templates for captions
     caption_templates = [
-        "Obsessed with this {trend} look! 👗✨ #fashion #{trend_no_space}",
-        "My take on the {trend} trend. What do you guys think? 🤔",
+        "Obsessed with this {trend} look! #fashion #{trend_no_space}",
+        "My take on the {trend} trend. What do you guys think?",
         "Loving the {trend} aesthetic lately. So comfy yet stylish.",
         "Can't get enough of {trend}. It's taking over my wardrobe!",
         "Classic {trend} vibes for today's outfit. #OOTD",
@@ -32,7 +32,7 @@ def generate_synthetic_data(num_records=2000):
     
     # Templates for comments (positive, negative, neutral)
     comment_templates = [
-        ("I absolutely love this {trend} style! 😍", "positive"),
+        ("I absolutely love this {trend} style!", "positive"),
         ("This {trend} look is everything!", "positive"),
         ("Not a fan of {trend}, it looks weird to me.", "negative"),
         ("I think {trend} is overrated tbh.", "negative"),
@@ -41,6 +41,7 @@ def generate_synthetic_data(num_records=2000):
         ("So stunning! {trend} fits you perfectly.", "positive"),
         ("I don't get the hype around {trend}.", "negative")
     ]
+
     
     start_date = datetime(2023, 1, 1)
     

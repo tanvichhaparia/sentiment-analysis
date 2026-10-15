@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 from wordcloud import WordCloud
+from collections import Counter
 import json
 import os
 import sys
@@ -15,10 +17,220 @@ from src.trend_analysis import calculate_trend_shifts
 from src.sentiment_model import SentimentModel
 from src.fine_tuned_model import FineTunedSentimentModel, is_fine_tuned_model_available
 
+# Editorial Fashion Palette
+# Primary background: Deep warm charcoal / noir
+# Accent: Haute champagne / gold / terracotta / muted sage
+FASHION_BG = "#0E0E10"
+FASHION_SURFACE = "#17181C"
+FASHION_BORDER = "#2A2B31"
+FASHION_GOLD = "#D4AF37"
+FASHION_CREAM = "#F5F5F0"
+FASHION_MUTED = "#8E909A"
+FASHION_ROSE = "#C57B7B"
+FASHION_SAGE = "#7DA88B"
 
-st.set_page_config(page_title="Fashion Trend shifts Dashboard", layout="wide")
+st.set_page_config(
+    page_title="HAUTE METRICS | Fashion Trend & Sentiment Intelligence",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# Cache data loading
+# High-Fashion Editorial CSS Styling
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@200;300;400;500;600&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Montserrat', sans-serif;
+        color: #E2E2E6;
+    }
+
+    /* Editorial Headline Styling - Sharp High-Contrast Masthead */
+    .fashion-title {
+        font-family: 'Cinzel', serif !important;
+        font-weight: 700 !important;
+        font-size: 2.6rem !important;
+        letter-spacing: 0.22em !important;
+        text-transform: uppercase !important;
+        color: #111216 !important;
+        margin-bottom: 0.2rem !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .fashion-title {
+            color: #F8F8F6 !important;
+            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.25);
+        }
+    }
+
+
+    .fashion-subtitle {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 300;
+        font-size: 0.88rem;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: #D4AF37;
+        margin-bottom: 1.8rem;
+        border-bottom: 1px solid #2A2B31;
+        padding-bottom: 0.8rem;
+    }
+
+    /* KPI Editorial Card */
+    .kpi-container {
+        background: linear-gradient(135deg, #16171B 0%, #1A1C22 100%);
+        border: 1px solid #282A32;
+        border-radius: 2px;
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi-label {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        color: #8E909A;
+        margin-bottom: 0.3rem;
+    }
+
+    .kpi-value {
+        font-family: 'Cinzel', serif;
+        font-size: 1.85rem;
+        font-weight: 600;
+        color: #FAF9F6;
+        letter-spacing: 0.05em;
+    }
+
+    /* Minimalist status badge */
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border: 1px solid #D4AF37;
+        color: #D4AF37;
+        font-size: 0.75rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        background: rgba(212, 175, 55, 0.08);
+        border-radius: 2px;
+        font-weight: 500;
+    }
+
+    .sentiment-badge-pos {
+        display: inline-block;
+        padding: 0.35rem 1rem;
+        border: 1px solid #7DA88B;
+        color: #7DA88B;
+        font-size: 0.85rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        background: rgba(125, 168, 139, 0.1);
+        border-radius: 2px;
+    }
+
+    .sentiment-badge-neg {
+        display: inline-block;
+        padding: 0.35rem 1rem;
+        border: 1px solid #C57B7B;
+        color: #C57B7B;
+        font-size: 0.85rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        background: rgba(197, 123, 123, 0.1);
+        border-radius: 2px;
+    }
+
+    .sentiment-badge-neu {
+        display: inline-block;
+        padding: 0.35rem 1rem;
+        border: 1px solid #8E909A;
+        color: #B4B6C0;
+        font-size: 0.85rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        background: rgba(142, 144, 154, 0.1);
+        border-radius: 2px;
+    }
+
+    .topic-pill {
+        display: inline-block;
+        margin: 0.25rem 0.25rem;
+        padding: 0.35rem 0.8rem;
+        background: #1B1D23;
+        border: 1px solid #2C2F38;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        color: #D8D9E0;
+        border-radius: 2px;
+    }
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1.5rem;
+        border-bottom: 1px solid #282A32;
+        padding-bottom: 0.3rem;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'Cinzel', serif;
+        font-size: 0.82rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #8E909A;
+        padding: 0.6rem 0.5rem;
+        border: none;
+        background: transparent;
+    }
+
+    .stTabs [aria-selected="true"] {
+        color: #D4AF37 !important;
+        border-bottom: 2px solid #D4AF37 !important;
+    }
+
+    /* Clean Streamlit Components */
+    .stButton>button {
+        background-color: #1A1C22;
+        color: #FAF9F6;
+        border: 1px solid #D4AF37;
+        border-radius: 2px;
+        font-family: 'Montserrat', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.78rem;
+        padding: 0.5rem 1.6rem;
+        transition: all 0.25s ease;
+    }
+
+    .stButton>button:hover {
+        background-color: #D4AF37;
+        color: #0E0E10;
+        border-color: #D4AF37;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Plotly High-Fashion Theme
+def apply_fashion_layout(fig, title=""):
+    fig.update_layout(
+        title=dict(
+            text=f"<span style='font-family: Cinzel; letter-spacing: 0.15em; font-size: 14px; text-transform: uppercase; color: #FAF9F6;'>{title}</span>",
+            x=0.02, y=0.96
+        ),
+        paper_bgcolor="#16171B",
+        plot_bgcolor="#16171B",
+        font=dict(family="Montserrat", size=11, color="#A8AAB4"),
+        margin=dict(l=30, r=30, t=50, b=30),
+        xaxis=dict(gridcolor="#22242B", linecolor="#2C2F38", zeroline=False),
+        yaxis=dict(gridcolor="#22242B", linecolor="#2C2F38", zeroline=False),
+    )
+    return fig
+
+# Data Loader
 @st.cache_data
 def load_data():
     processed_path = "data/processed/processed_fashion_data.csv"
@@ -26,10 +238,12 @@ def load_data():
         return None
     df = pd.read_csv(processed_path)
     df['date'] = pd.to_datetime(df['date'])
-    # Convert string back to list
-    df['detected_trends'] = df['detected_trends'].apply(lambda x: x.split(',') if pd.notnull(x) and x != "" else [])
+    df['detected_trends'] = df['detected_trends'].apply(
+        lambda x: [item.strip() for item in x.split(',') if item.strip()] if pd.notnull(x) and x != "" else []
+    )
     return df
 
+# Model Loaders
 @st.cache_resource
 def load_model():
     model_path = "models/sentiment_model/sentiment_pipeline.pkl"
@@ -46,272 +260,371 @@ def load_fine_tuned_model():
     return FineTunedSentimentModel()
 
 def main():
-    st.title("👗 Fashion Trend Shifts & Sentiment Dashboard")
-    st.markdown("Analyze fashion influencer captions and audience comments using NLP (spaCy & ML).")
+    # Editorial Header
+    st.markdown('<div class="fashion-title">HAUTE METRICS</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="fashion-subtitle">Automated Text Mining & Sentiment Intelligence for Fast-Fashion Trend Shifts</div>',
+        unsafe_allow_html=True
+    )
     
     df = load_data()
     model = load_model()
     
     if df is None:
-        st.warning("Processed data not found. Please run the data preparation scripts first.")
+        st.warning("Processed dataset not located. Run scripts/process_data.py to initialize data.")
         return
-        
-    # Tabs
+
+    # Master Tab Navigation
     tabs = st.tabs([
-        "Overview", "Trend Analysis", "Trend Shifts", "Sentiment Analysis", 
-        "Influencer Analysis", "Text Analyzer", "Dataset Explorer", "Model Performance"
+        "OVERVIEW",
+        "TREND ANALYSIS",
+        "TEMPORAL SHIFTS",
+        "SENTIMENT INTELLIGENCE",
+        "INFLUENCER RADAR",
+        "TEXT ANALYZER",
+        "DATASET REPOSITORY",
+        "MODEL PERFORMANCE"
     ])
-    
-    # 1. Overview
+
+    # 1. OVERVIEW
     with tabs[0]:
-        st.header("Project Overview")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Posts/Comments", len(df))
-        col2.metric("Total Influencers", df['influencer'].nunique())
+        st.markdown("### EXECUTIVE SUMMARY")
         
-        # Count total unique trends
         all_trends = [t for sublist in df['detected_trends'] for t in sublist]
         unique_trends = len(set(all_trends))
-        col3.metric("Detected Trends", unique_trends)
-        
-        # Most popular trend
-        from collections import Counter
         most_popular = Counter(all_trends).most_common(1)[0][0] if all_trends else "N/A"
-        col4.metric("Top Trend", most_popular)
         
-        st.subheader("Dataset Preview")
-        st.dataframe(df[['date', 'influencer', 'text', 'detected_trends', 'predicted_sentiment']].head())
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(
+                f'<div class="kpi-container"><div class="kpi-label">Corpus Volume</div>'
+                f'<div class="kpi-value">{len(df):,}</div></div>',
+                unsafe_allow_html=True
+            )
+        with c2:
+            st.markdown(
+                f'<div class="kpi-container"><div class="kpi-label">Monitored Creators</div>'
+                f'<div class="kpi-value">{df["influencer"].nunique()}</div></div>',
+                unsafe_allow_html=True
+            )
+        with c3:
+            st.markdown(
+                f'<div class="kpi-container"><div class="kpi-label">Tracked Trends</div>'
+                f'<div class="kpi-value">{unique_trends}</div></div>',
+                unsafe_allow_html=True
+            )
+        with c4:
+            st.markdown(
+                f'<div class="kpi-container"><div class="kpi-label">Predominant Aesthetic</div>'
+                f'<div class="kpi-value" style="font-size: 1.35rem;">{most_popular.upper()}</div></div>',
+                unsafe_allow_html=True
+            )
         
-    # 2. Trend Analysis
+        st.markdown("#### RECENT SOCIAL RECORDS")
+        display_cols = ['date', 'influencer', 'text', 'detected_trends', 'predicted_sentiment']
+        clean_preview = df[display_cols].head(8).copy()
+        clean_preview['detected_trends'] = clean_preview['detected_trends'].apply(lambda x: ", ".join(x) if x else "-")
+        st.dataframe(clean_preview, use_container_width=True)
+
+    # 2. TREND ANALYSIS
     with tabs[1]:
-        st.header("Fashion Trend Analysis & Unsupervised Topic Discovery")
+        st.markdown("### TREND TAXONOMY & DISCOVERY")
         
         analysis_mode = st.radio(
-            "Trend Extraction Perspective:",
-            ["Rule/Seed-based Trends", "Unsupervised Discovered Topics (NMF / Topic Modeling)"],
-            horizontal=True
+            "Analytical Perspective",
+            ["Seed Taxonomy & Lexical Matching", "Unsupervised Thematic Discovery (NMF / Topic Modeling)"],
+            horizontal=True,
+            label_visibility="collapsed"
         )
         
-        if analysis_mode == "Rule/Seed-based Trends":
+        if analysis_mode == "Seed Taxonomy & Lexical Matching":
             if all_trends:
-                trend_counts = Counter(all_trends).most_common(20)
+                trend_counts = Counter(all_trends).most_common(15)
                 trend_df = pd.DataFrame(trend_counts, columns=['Trend', 'Mentions'])
                 
-                col1, col2 = st.columns(2)
+                col1, col2 = st.columns([1.1, 0.9])
                 with col1:
-                    fig = px.bar(trend_df, x='Mentions', y='Trend', orientation='h', title="Top Fashion Trends (Seed Keywords + Phrases)")
-                    fig.update_layout(yaxis={'categoryorder':'total ascending'})
+                    fig = px.bar(
+                        trend_df, x='Mentions', y='Trend', orientation='h',
+                        color='Mentions',
+                        color_continuous_scale=[[0, '#2C2F38'], [0.5, '#7A8094'], [1, '#D4AF37']]
+                    )
+                    fig.update_layout(yaxis={'categoryorder':'total ascending'}, coloraxis_showscale=False)
+                    apply_fashion_layout(fig, "Leading Fashion Trends by Volume")
                     st.plotly_chart(fig, use_container_width=True)
                     
                 with col2:
-                    st.subheader("Trend Word Cloud")
-                    wordcloud = WordCloud(width=800, height=600, background_color='white').generate(" ".join(all_trends))
-                    fig, ax = plt.subplots(figsize=(10, 6))
+                    st.markdown("#### AESTHETIC LEXICON CLOUD")
+                    wordcloud = WordCloud(
+                        width=800, height=520,
+                        background_color='#16171B',
+                        colormap='cividis',
+                        collocations=False
+                    ).generate(" ".join(all_trends))
+                    fig_wc, ax = plt.subplots(figsize=(8, 5.2), facecolor='#16171B')
                     ax.imshow(wordcloud, interpolation='bilinear')
                     ax.axis('off')
-                    st.pyplot(fig)
+                    st.pyplot(fig_wc)
             else:
-                st.info("No trends detected.")
+                st.info("No trends identified in the current index.")
         else:
-            st.subheader("💡 Unsupervised Topic Discovery (Non-Negative Matrix Factorization)")
-            st.markdown(
-                "Unlike dictionary matching, **NMF decomposes the TF-IDF document-term matrix** into latent thematic topics. "
-                "This allows discovering emerging slang, micro-trends, and aesthetics automatically."
-            )
+            st.markdown("#### LATENT DIRICHLET & NON-NEGATIVE MATRIX DECOMPOSITION")
+            st.caption("Unsupervised factorization extracts emerging micro-trends and slang directly from TF-IDF n-grams without manual seed dictionaries.")
             
             topics_file = "reports/discovered_topics.json"
             if os.path.exists(topics_file):
                 with open(topics_file, 'r') as f:
                     topics_info = json.load(f)
                 
-                col_t1, col_t2 = st.columns([1, 1])
+                col_t1, col_t2 = st.columns([1, 1.1])
                 with col_t1:
-                    st.markdown("#### Discovered Thematic Topics")
+                    st.markdown("#### DISCOVERED LATENT TOPICS")
                     for t in topics_info.get('topics', []):
-                        keywords_pill = " • ".join(t['top_words'])
-                        st.markdown(f"**Topic {t['id'] + 1}**: `{keywords_pill}`")
+                        keywords_pill = "  |  ".join(t['top_words'][:5])
+                        st.markdown(
+                            f'<div class="kpi-container" style="padding: 0.8rem 1rem; margin-bottom: 0.6rem;">'
+                            f'<div class="kpi-label">Topic {t["id"] + 1}</div>'
+                            f'<div style="font-size: 0.82rem; color: #D8D9E0; letter-spacing: 0.05em;">{keywords_pill}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
                 
                 with col_t2:
                     dist = topics_info.get('topic_distribution', {})
                     if dist:
-                        dist_df = pd.DataFrame(list(dist.items()), columns=['Topic', 'Post Count'])
+                        dist_df = pd.DataFrame(list(dist.items()), columns=['Topic', 'Count'])
                         fig_topics = px.bar(
-                            dist_df, x='Post Count', y='Topic', orientation='h',
-                            title="Post Distribution by Discovered Topic",
-                            color='Post Count', color_continuous_scale='Blues'
+                            dist_df, x='Count', y='Topic', orientation='h',
+                            color='Count',
+                            color_continuous_scale=[[0, '#242730'], [1, '#D4AF37']]
                         )
-                        fig_topics.update_layout(yaxis={'categoryorder': 'total ascending'})
+                        fig_topics.update_layout(yaxis={'categoryorder': 'total ascending'}, coloraxis_showscale=False)
+                        apply_fashion_layout(fig_topics, "Corpus Distribution by Discovered Theme")
                         st.plotly_chart(fig_topics, use_container_width=True)
             else:
-                st.info("Topic discovery report not found. Run scripts/process_data.py to extract topics.")
+                st.info("Topic decomposition data not available. Execute scripts/process_data.py to compile topics.")
 
-            
-    # 3. Trend Shifts
+    # 3. TEMPORAL SHIFTS
     with tabs[2]:
-        st.header("Trend Shifts Over Time")
-        shift_df = calculate_trend_shifts(df)
+        st.markdown("### TEMPORAL TREND SHIFTS")
+        st.caption("Evaluation of monthly frequency growth rate to classify trends into Emerging, Rising, Stable, or Declining lifecycle stages.")
         
+        shift_df = calculate_trend_shifts(df)
         if not shift_df.empty:
             trends_list = sorted(list(shift_df['detected_trends'].unique()))
-            selected_trend = st.selectbox("Select a trend to analyze:", trends_list)
+            selected_trend = st.selectbox("Select Trend for Lifecycle Inspection", trends_list)
             
             trend_data = shift_df[shift_df['detected_trends'] == selected_trend].copy()
             trend_data['month_str'] = trend_data['month_year'].astype(str)
             
-            fig = px.line(trend_data, x='month_str', y='mentions', markers=True, title=f"Mentions over time: {selected_trend}")
-            st.plotly_chart(fig, use_container_width=True)
+            current_status = trend_data['status'].iloc[-1]
+            growth_val = trend_data['growth_rate'].iloc[-1] * 100
             
-            st.subheader(f"Current Status: {trend_data['status'].iloc[-1]}")
-            st.dataframe(trend_data[['month_str', 'mentions', 'prev_mentions', 'growth_rate', 'status']])
+            cs1, cs2 = st.columns([1, 3])
+            with cs1:
+                st.markdown(
+                    f'<div class="kpi-container">'
+                    f'<div class="kpi-label">Lifecycle Stage</div>'
+                    f'<div style="margin: 0.4rem 0;"><span class="status-badge">{current_status}</span></div>'
+                    f'<div class="kpi-label" style="margin-top: 0.8rem;">Period Growth</div>'
+                    f'<div class="kpi-value">{growth_val:+.1f}%</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            
+            with cs2:
+                fig_shift = px.line(
+                    trend_data, x='month_str', y='mentions', markers=True,
+                    line_shape='spline'
+                )
+                fig_shift.update_traces(line_color='#D4AF37', marker=dict(size=7, color='#FAF9F6'))
+                apply_fashion_layout(fig_shift, f"Monthly Volume Trajectory: {selected_trend.upper()}")
+                st.plotly_chart(fig_shift, use_container_width=True)
+            
+            st.markdown("#### PERIOD-OVER-PERIOD BREAKDOWN")
+            table_view = trend_data[['month_str', 'mentions', 'prev_mentions', 'growth_rate', 'status']].copy()
+            table_view.columns = ['Month', 'Mentions', 'Prior Period', 'Growth Rate', 'Lifecycle State']
+            table_view['Growth Rate'] = table_view['Growth Rate'].apply(lambda g: f"{g * 100:+.1f}%")
+            st.dataframe(table_view, use_container_width=True)
         else:
-            st.info("Not enough data for trend shifts.")
-            
-    # 4. Sentiment Analysis
+            st.info("Insufficient temporal records to calculate lifecycle transitions.")
+
+    # 4. SENTIMENT INTELLIGENCE
     with tabs[3]:
-        st.header("Audience Sentiment Analysis")
+        st.markdown("### AUDIENCE SENTIMENT DYNAMICS")
         sentiment_counts = df['predicted_sentiment'].value_counts().reset_index()
         sentiment_counts.columns = ['Sentiment', 'Count']
         
-        col1, col2 = st.columns(2)
-        with col1:
-            fig = px.pie(sentiment_counts, values='Count', names='Sentiment', title="Overall Sentiment Distribution", hole=0.4,
-                         color='Sentiment', color_discrete_map={'positive':'green', 'neutral':'gray', 'negative':'red'})
-            st.plotly_chart(fig, use_container_width=True)
+        c_pie, c_bar = st.columns([1, 1.3])
+        with c_pie:
+            palette = {'positive': '#7DA88B', 'neutral': '#8E909A', 'negative': '#C57B7B'}
+            fig_pie = px.pie(
+                sentiment_counts, values='Count', names='Sentiment',
+                hole=0.55,
+                color='Sentiment',
+                color_discrete_map=palette
+            )
+            apply_fashion_layout(fig_pie, "Global Sentiment Apportionment")
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_pie, use_container_width=True)
             
-        with col2:
-            st.subheader("Sentiment by Trend")
-            # Explode trends to get sentiment per trend
+        with c_bar:
             exploded = df.explode('detected_trends').dropna(subset=['detected_trends'])
             sent_trend = exploded.groupby(['detected_trends', 'predicted_sentiment']).size().reset_index(name='count')
-            # Get top 10 trends
             top_10 = [t[0] for t in Counter(all_trends).most_common(10)]
             sent_trend_top = sent_trend[sent_trend['detected_trends'].isin(top_10)]
             
-            fig = px.bar(sent_trend_top, x='detected_trends', y='count', color='predicted_sentiment', 
-                         title="Sentiment for Top 10 Trends", barmode='stack',
-                         color_discrete_map={'positive':'green', 'neutral':'gray', 'negative':'red'})
-            st.plotly_chart(fig, use_container_width=True)
-            
-    # 5. Influencer Analysis
+            fig_sent_trend = px.bar(
+                sent_trend_top, x='detected_trends', y='count', color='predicted_sentiment',
+                barmode='stack',
+                color_discrete_map=palette
+            )
+            apply_fashion_layout(fig_sent_trend, "Sentiment Divergence across Top Aesthetics")
+            fig_sent_trend.update_layout(xaxis_title="", yaxis_title="Record Count", legend_title="")
+            st.plotly_chart(fig_sent_trend, use_container_width=True)
+
+    # 5. INFLUENCER RADAR
     with tabs[4]:
-        st.header("Influencer Insights")
+        st.markdown("### INFLUENCER AESTHETIC RADAR")
         influencers = sorted(df['influencer'].unique())
-        selected_inf = st.selectbox("Select Influencer:", influencers)
+        selected_inf = st.selectbox("Select Creator Profile", influencers)
         
         inf_data = df[df['influencer'] == selected_inf]
-        
-        col1, col2 = st.columns(2)
-        col1.metric("Total Posts/Comments", len(inf_data))
-        
         inf_trends = [t for sublist in inf_data['detected_trends'] for t in sublist]
-        top_inf_trend = Counter(inf_trends).most_common(1)[0][0] if inf_trends else "N/A"
-        col2.metric("Favorite Trend", top_inf_trend)
+        top_inf_trend = Counter(inf_trends).most_common(1)[0][0] if inf_trends else "None"
         
-        if inf_trends:
-            inf_trend_df = pd.DataFrame(Counter(inf_trends).most_common(10), columns=['Trend', 'Mentions'])
-            fig = px.bar(inf_trend_df, x='Mentions', y='Trend', orientation='h', title=f"Top Trends for {selected_inf}")
-            st.plotly_chart(fig, use_container_width=True)
+        ic1, ic2 = st.columns([1, 2.5])
+        with ic1:
+            st.markdown(
+                f'<div class="kpi-container">'
+                f'<div class="kpi-label">Creator Handle</div>'
+                f'<div style="font-size: 1.1rem; font-weight: 600; color: #FAF9F6; margin-bottom: 0.8rem;">{selected_inf}</div>'
+                f'<div class="kpi-label">Monitored Entries</div>'
+                f'<div class="kpi-value">{len(inf_data)}</div>'
+                f'<div class="kpi-label" style="margin-top: 0.8rem;">Signature Aesthetic</div>'
+                f'<div style="font-size: 1.05rem; color: #D4AF37; font-family: Cinzel, serif;">{top_inf_trend.upper()}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
             
-    # 6. Text Analyzer
+        with ic2:
+            if inf_trends:
+                inf_trend_df = pd.DataFrame(Counter(inf_trends).most_common(8), columns=['Trend', 'Mentions'])
+                fig_inf = px.bar(
+                    inf_trend_df, x='Mentions', y='Trend', orientation='h',
+                    color='Mentions',
+                    color_continuous_scale=[[0, '#22252C'], [1, '#D4AF37']]
+                )
+                fig_inf.update_layout(yaxis={'categoryorder':'total ascending'}, coloraxis_showscale=False)
+                apply_fashion_layout(fig_inf, f"Aesthetic Portfolio: {selected_inf}")
+                st.plotly_chart(fig_inf, use_container_width=True)
+
+    # 6. TEXT ANALYZER
     with tabs[5]:
-        st.header("Real-time Text Analyzer")
-        st.markdown("Analyze any text using either the **Pre-trained HuggingFace Model** or our **Fine-Tuned Custom Model**.")
+        st.markdown("### REAL-TIME LINGUISTIC & SENTIMENT INFERENCE")
+        st.caption("Submit custom captions or user critiques for immediate pipeline extraction and neural sentiment classification.")
 
         user_text = st.text_area(
-            "Enter a fashion caption or comment:",
-            "I am obsessed with these oversized denim jackets!"
+            "Input Social Caption or Feedback",
+            "Obsessed with this oversized denim trench coat, beautifully structured and timeless aesthetic.",
+            height=100
         )
 
         fine_tuned_ready = is_fine_tuned_model_available()
 
-        model_choice = st.radio(
-            "Select Model to Use:",
-            options=["Pre-trained HuggingFace (DistilBERT)", "Our Fine-Tuned Model"],
-            help="The Fine-Tuned Model is only available after running scripts/fine_tune_transformer.py"
-        )
-
-        if model_choice == "Our Fine-Tuned Model" and not fine_tuned_ready:
-            st.warning(
-                "⚠️ Fine-tuned model not found. Please run:\n\n"
-                "```\npython scripts/fine_tune_transformer.py\n```\n\n"
-                "This will train and save your custom model locally."
+        m_col1, m_col2 = st.columns([1.5, 1])
+        with m_col1:
+            model_choice = st.radio(
+                "Classification Engine",
+                options=["Fine-Tuned Domain Model (DistilBERT Sequence Classifier)", "Zero-Shot Pre-Trained Transformer"],
+                horizontal=True
             )
-        elif st.button("Analyze Text"):
-            with st.spinner("Analyzing..."):
-                # --- NLP Processing (spaCy) — always runs ---
-                cleaned      = preprocess_text(user_text)
-                noun_phrases = extract_noun_phrases(user_text)
-                trends       = extract_trends_from_phrases([noun_phrases])[0]
 
-                # --- Sentiment Prediction ---
-                if model_choice == "Our Fine-Tuned Model" and fine_tuned_ready:
+        if st.button("RUN INFERENCE"):
+            with st.spinner("Processing through spaCy and PyTorch architecture..."):
+                cleaned = preprocess_text(user_text)
+                noun_phrases = extract_noun_phrases(user_text)
+                trends = extract_trends_from_phrases([noun_phrases])[0]
+
+                if "Fine-Tuned" in model_choice and fine_tuned_ready:
                     ft_model = load_fine_tuned_model()
                     if ft_model is None:
-                        st.error("Failed to load fine-tuned model.")
+                        st.error("Failed to load domain-trained model.")
                         st.stop()
-                    result   = ft_model.predict_single(user_text)
-                    sentiment    = result["label"]
-                    confidence   = result["confidence"]
-                    scores       = result["scores"]
-                    model_used   = "Our Fine-Tuned DistilBERT (trained on fashion dataset)"
+                    result = ft_model.predict_single(user_text)
+                    sentiment = result["label"]
+                    confidence = result["confidence"]
+                    scores = result["scores"]
+                    engine_label = "Fine-Tuned DistilBERT (Fashion Domain Checkpoint)"
                 else:
-
-                    # Pre-trained HuggingFace
                     if model is None:
-                        st.error("Pre-trained model not loaded.")
+                        st.error("Inference engine unavailable.")
                         st.stop()
-                    sentiment  = model.predict([user_text])[0]
+                    sentiment = model.predict([user_text])[0]
                     confidence = None
-                    scores     = None
-                    model_used = "Pre-trained HuggingFace DistilBERT"
+                    scores = None
+                    engine_label = "Pre-Trained Transformer (DistilBERT Baseline)"
 
-            st.success("Analysis Complete!")
+            st.markdown("---")
+            out_c1, out_c2 = st.columns([1.1, 1])
+            with out_c1:
+                st.markdown("#### LINGUISTIC EXTRACTION (SPACY)")
+                st.markdown(
+                    f'<div class="kpi-container" style="padding: 1rem 1.2rem;">'
+                    f'<div class="kpi-label">Normalized Tokens</div>'
+                    f'<div style="font-size: 0.86rem; color: #D8D9E0; margin-bottom: 0.8rem;">{cleaned if cleaned else "No alphanumeric tokens retained"}</div>'
+                    f'<div class="kpi-label">Syntactic Noun Chunks</div>'
+                    f'<div style="font-size: 0.86rem; color: #D8D9E0; margin-bottom: 0.8rem;">{", ".join(noun_phrases) if noun_phrases else "None extracted"}</div>'
+                    f'<div class="kpi-label">Matched Aesthetics / Trends</div>'
+                    f'<div style="font-size: 0.86rem; color: #D4AF37; font-weight: 500;">{", ".join(trends) if trends else "No taxonomy entity identified"}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("NLP Processing (spaCy)")
-                st.write(f"**Cleaned Text:** {cleaned}")
-                st.write(f"**Noun Phrases:** {noun_phrases if noun_phrases else 'None'}")
-                st.write(f"**Detected Fashion Trends:** {trends if trends else 'None detected'}")
+            with out_c2:
+                st.markdown("#### POLARITY EVALUATION")
+                badge_class = {
+                    "positive": "sentiment-badge-pos",
+                    "negative": "sentiment-badge-neg",
+                    "neutral": "sentiment-badge-neu"
+                }.get(sentiment.lower(), "sentiment-badge-neu")
 
-            with col2:
-                st.subheader("Sentiment Prediction")
-                st.write(f"**Model Used:** {model_used}")
+                st.markdown(
+                    f'<div class="kpi-container" style="padding: 1rem 1.2rem;">'
+                    f'<div class="kpi-label">Inference Engine</div>'
+                    f'<div style="font-size: 0.8rem; color: #8E909A; margin-bottom: 0.6rem;">{engine_label}</div>'
+                    f'<div class="kpi-label">Polarity Verdict</div>'
+                    f'<div style="margin: 0.3rem 0 0.8rem 0;"><span class="{badge_class}">{sentiment.upper()}</span></div>'
+                    f'{f"<div class=\"kpi-label\">Confidence Level</div><div class=\"kpi-value\" style=\"font-size: 1.4rem;\">{confidence}%</div>" if confidence else ""}'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
 
-                # Color-coded sentiment badge
-                color_map = {"positive": "🟢", "negative": "🔴", "neutral": "🟡"}
-                badge = color_map.get(sentiment, "⚪")
-                st.markdown(f"## {badge} {sentiment.capitalize()}")
-
-                if confidence is not None:
-                    st.write(f"**Confidence:** {confidence}%")
-
-                if scores is not None:
-                    st.subheader("Score Breakdown")
+                if scores:
                     score_df = pd.DataFrame([scores]).T.reset_index()
-                    score_df.columns = ["Sentiment", "Score (%)"]
-                    score_df = score_df.sort_values("Score (%)", ascending=False)
-                    fig = px.bar(score_df, x="Sentiment", y="Score (%)",
-                                 color="Sentiment",
-                                 color_discrete_map={"positive": "green", "neutral": "gray", "negative": "red"},
-                                 title="Prediction Confidence Breakdown")
-                    st.plotly_chart(fig, use_container_width=True)
+                    score_df.columns = ["Class", "Probability"]
+                    fig_score = px.bar(
+                        score_df, x="Probability", y="Class", orientation='h',
+                        color="Class",
+                        color_discrete_map={"positive": "#7DA88B", "neutral": "#8E909A", "negative": "#C57B7B"}
+                    )
+                    apply_fashion_layout(fig_score, "Posterior Class Probabilities (%)")
+                    fig_score.update_layout(showlegend=False, xaxis_title="Percentage", yaxis_title="")
+                    st.plotly_chart(fig_score, use_container_width=True)
 
-
-
-    # 7. Dataset Explorer
+    # 7. DATASET REPOSITORY
     with tabs[6]:
-        st.header("Dataset Explorer")
-        st.dataframe(df)
+        st.markdown("### CORPUS DATASET REPOSITORY")
+        st.dataframe(df, use_container_width=True)
         
-        st.subheader("Upload New Data")
-        uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
+        st.markdown("#### INGEST EXTERNAL CORPUS")
+        uploaded_file = st.file_uploader("Upload Delimited CSV for Batch Pipeline Ingestion", type=['csv'])
         if uploaded_file is not None:
-            st.write("File uploaded successfully. Note: To process this file and update the dashboard, you would run it through the preprocessing pipeline scripts.")
-            
-    # 8. Model Performance
+            st.info("File successfully staged. Run scripts/process_data.py to execute the NLP taxonomy and inference pipeline on the newly uploaded data.")
+
+    # 8. MODEL PERFORMANCE
     with tabs[7]:
-        st.header("Model Evaluation")
+        st.markdown("### EMPIRICAL MODEL PERFORMANCE")
         report_path = "reports/evaluation_report.json"
         cm_path = "reports/confusion_matrix.png"
         
@@ -319,17 +632,25 @@ def main():
             with open(report_path, 'r') as f:
                 report = json.load(f)
                 
-            st.metric("Accuracy", f"{report['accuracy']:.4f}")
-            
-            st.subheader("Classification Report")
+            c_acc, c_macro = st.columns([1, 3])
+            with c_acc:
+                st.markdown(
+                    f'<div class="kpi-container">'
+                    f'<div class="kpi-label">Validation Accuracy</div>'
+                    f'<div class="kpi-value">{report["accuracy"] * 100:.1f}%</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+                
+            st.markdown("#### CLASSIFICATION METRICS")
             report_df = pd.DataFrame(report['classification_report']).transpose()
-            st.dataframe(report_df)
+            st.dataframe(report_df.style.format(precision=3), use_container_width=True)
             
             if os.path.exists(cm_path):
-                st.subheader("Confusion Matrix")
-                st.image(cm_path)
+                st.markdown("#### CONFUSION MATRIX")
+                st.image(cm_path, width=600)
         else:
-            st.info("Evaluation report not found. Run scripts/evaluate_model.py.")
+            st.info("Evaluation metrics report not found. Execute scripts/evaluate_model.py to compile metrics.")
 
 if __name__ == "__main__":
     main()
